@@ -29,10 +29,11 @@ LedPin led_pins[NUM_LEDS] = {
 		{BAR9_GPIO_Port, BAR9_Pin}
 };
 
-static uint16_t led_mask = 0;
+static uint16_t led_mask = 0x0000;
 
 // Private function prototypes
 static void updateLeds(void);
+static void updateMaskFromInt(uint16_t value);
 
 // Public Function Implementations
 void app_init(void)
@@ -42,19 +43,23 @@ void app_init(void)
 
 void app_loop(void)
 {
-    // Repeatedly called from main loop
-	static uint8_t ix = 0;
-	static int8_t inc = 1;
 
-	led_mask = 0x01 << ix;
+	// Convert a value to a bar graph with N LEDs lit up corresponding to value N
+	// Start explicit, with 1 through 10
+//	uint16_t led_count = (value - min_value) * NUM_LEDS / (max_value - min_value);
+
+	static int i = 0;
+
+	updateMaskFromInt(i);
+
 	updateLeds();
 
-	if ( (ix == 9 && inc == 1) || (ix == 0 && inc == -1) ) {
-		inc = -(inc);
-	}
-	ix = ix + inc;
-
 	HAL_Delay(200);
+
+	if (i == 10) {
+		i=0;
+	}
+	i++;
 
 }
 
@@ -70,4 +75,12 @@ static void updateLeds(void)
 	}
 
 
+}
+
+// Updates the global led pin mask so that bottom N LEDs are lit for value N
+// value must be between 0  10
+static void updateMaskFromInt(uint16_t value) {
+	// Convert value into a mask
+	if (value > NUM_LEDS) value = NUM_LEDS;
+	led_mask = (1 << value) - 1; // subtracting 1 sets all the lower bits
 }
