@@ -9,7 +9,7 @@
 
 #define NUM_LEDS 10
 
-// Private variables (file scope)
+// ==================  Private Variables (File Scope)  =================================
 
 typedef struct {
 	GPIO_TypeDef* port;
@@ -31,11 +31,12 @@ LedPin led_pins[NUM_LEDS] = {
 
 static uint16_t led_mask = 0x0000;
 
-// Private function prototypes
+// =======================  Private function prototypes =======================================
 static void updateLeds(void);
 static void updateMaskFromInt(uint16_t value);
+static int mapInt(int x, int inMin, inMax, outMin, outMax);
 
-// Public Function Implementations
+// =======================  Public Function Implementations =======================================
 void app_init(void)
 {
     // Initialization code, e.g., set up GPIOs or variables
@@ -63,7 +64,7 @@ void app_loop(void)
 
 }
 
-// Private/Internal Function Definitions
+// =======================  Private Function Definitions =======================================
 static void updateLeds(void)
 {
 	// Check bit mask and set corresponding ledPin port and pin
@@ -83,4 +84,16 @@ static void updateMaskFromInt(uint16_t value) {
 	// Convert value into a mask
 	if (value > NUM_LEDS) value = NUM_LEDS;
 	led_mask = (1 << value) - 1; // subtracting 1 sets all the lower bits
+}
+
+static int mapInt(int x, int inMin, inMax, outMin, outMax) {
+	if (x < inMin) x = inMin;
+	if (x > inMax) x = inMax;
+	return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+}
+
+float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
+    if (x < in_min) x = in_min;
+    if (x > in_max) x = in_max;
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
