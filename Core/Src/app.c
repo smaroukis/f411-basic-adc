@@ -29,7 +29,7 @@ LedPin led_pins[NUM_LEDS] = {
 		{BAR9_GPIO_Port, BAR9_Pin}
 };
 
-static uint16_t led_mask = 0x0001;
+static uint16_t led_mask = 0;
 
 // Private function prototypes
 static void updateLeds(void);
@@ -43,16 +43,16 @@ void app_init(void)
 void app_loop(void)
 {
     // Repeatedly called from main loop
-	static uint8_t i = 0;
+	static uint8_t ix = 0;
+	static int8_t inc = 1;
 
-	led_mask <<= 1;
+	led_mask = 0x01 << ix;
 	updateLeds();
 
-	i++;
-	if (i == 10 || led_mask == 0) {
-		i = 0;
-		led_mask = 0x0001;
+	if ( (ix == 9 && inc == 1) || (ix == 0 && inc == -1) ) {
+		inc = -(inc);
 	}
+	ix = ix + inc;
 
 	HAL_Delay(200);
 
