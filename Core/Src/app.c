@@ -34,7 +34,6 @@ static uint16_t led_mask = 0x0000;
 // =======================  Private function prototypes =======================================
 static void updateLeds(void);
 static void updateMaskFromInt(uint16_t value);
-static int mapInt(int x, int inMin, inMax, outMin, outMax);
 
 // =======================  Public Function Implementations =======================================
 void app_init(void)
@@ -86,14 +85,4 @@ static void updateMaskFromInt(uint16_t value) {
 	led_mask = (1 << value) - 1; // subtracting 1 sets all the lower bits
 }
 
-static int mapInt(int x, int inMin, inMax, outMin, outMax) {
-	if (x < inMin) x = inMin;
-	if (x > inMax) x = inMax;
-	return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
-}
 
-float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
-    if (x < in_min) x = in_min;
-    if (x > in_max) x = in_max;
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
