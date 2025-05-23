@@ -38,3 +38,8 @@ VSCode plugins:
 - none required
 Git installed (for version control)
 
+
+
+### Notes
+
+Need to manually refresh STM32CubeIDE to see the newly created `Inc/util.h` file (`Fn5` should refresh)

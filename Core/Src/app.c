@@ -5,9 +5,14 @@
  *      Author: s
  */
 #include "app.h"    // Public interface
+#include "util.h"
 #include "main.h"  // or alternatively stm32f4xx_hal.h
 
 #define NUM_LEDS 10
+#define RANGE_IN_MIN 0
+#define RANGE_IN_MAX 4096
+#define RANGE_OUT_MIN 0
+#define RANGE_OUT_MAX 10
 
 // ==================  Private Variables (File Scope)  =================================
 
@@ -48,18 +53,14 @@ void app_loop(void)
 	// Start explicit, with 1 through 10
 //	uint16_t led_count = (value - min_value) * NUM_LEDS / (max_value - min_value);
 
-	static int i = 0;
 
-	updateMaskFromInt(i);
+	int val = mapInt(2730, RANGE_IN_MIN, RANGE_IN_MAX, RANGE_OUT_MIN, RANGE_OUT_MAX); // 2730/4096 -> 6/10
+
+	updateMaskFromInt(val);
 
 	updateLeds();
 
 	HAL_Delay(200);
-
-	if (i == 10) {
-		i=0;
-	}
-	i++;
 
 }
 

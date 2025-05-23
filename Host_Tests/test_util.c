@@ -60,6 +60,8 @@ void test_mapFloat(void) {
     ASSERT_FLOAT_EQ(mapFloat(0.0f, 0.0f, 3.3f, 0.0f, 10.0f), 0.0f, 0.01f);
     ASSERT_FLOAT_EQ(mapFloat(1.65f, 0.0f, 3.3f, 0.0f, 10.0f), 5.0f, 0.01f);
     ASSERT_FLOAT_EQ(mapFloat(3.3f, 0.0f, 3.3f, 0.0f, 10.0f), 10.0f, 0.01f);
+    ASSERT_FLOAT_EQ(mapFloat(3.3f, 0.0f, 3.3f, 0.0f, 10.0f), 10.0f, 0.01f);
+    ASSERT_FLOAT_EQ(mapFloat(2730.67f, 0.0f, 4096.0f, 0.0f, 10.0f), 6.67f, 0.01f);
     ASSERT_FLOAT_EQ(mapFloat(-1.0f, 0.0f, 3.3f, 0.0f, 10.0f), 0.0f, 0.01f);   // Clamped
     ASSERT_FLOAT_EQ(mapFloat(4.0f, 0.0f, 3.3f, 0.0f, 10.0f), 10.0f, 0.01f);   // Clamped
 }
@@ -69,6 +71,7 @@ void test_mapInt(void) {
     ASSERT_EQ(mapInt(0, 0, 100, 0, 10), 0);
     ASSERT_EQ(mapInt(50, 0, 100, 0, 10), 5);
     ASSERT_EQ(mapInt(100, 0, 100, 0, 10), 10);
+    ASSERT_EQ(mapInt(2730, 0, 4096, 0, 10), 6);
     ASSERT_EQ(mapInt(150, 0, 100, 0, 10), 10);  // Clamped
     ASSERT_EQ(mapInt(-1, 0, 100, 0, 10), 0);    // Clamped
 }
