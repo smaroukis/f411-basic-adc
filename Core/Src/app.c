@@ -8,11 +8,18 @@
 #include "util.h"
 #include "main.h"  // or alternatively stm32f4xx_hal.h
 
+#define ADC_MAX_VALUE_12B 4095
+
 #define NUM_LEDS 10
 #define RANGE_IN_MIN 0
-#define RANGE_IN_MAX 4096
+#define RANGE_IN_MAX ADC_MAX_VALUE_12B
 #define RANGE_OUT_MIN 0
 #define RANGE_OUT_MAX 10
+
+
+// ==================  External Variables Only Used Here =========================================
+extern ADC_HandleTypeDef hadc1;
+
 
 // ==================  Private Variables (File Scope)  =================================
 
@@ -44,23 +51,26 @@ static void updateMaskFromInt(uint16_t value);
 void app_init(void)
 {
     // Initialization code, e.g., set up GPIOs or variables
+	tm1637_init();
 }
 
+// Read ADC and update Bargraph to represent value from 1-10
 void app_loop(void)
 {
+	tm1637_set_all();
+	HAL_Delay(100);
 
-	// Convert a value to a bar graph with N LEDs lit up corresponding to value N
-	// Start explicit, with 1 through 10
-//	uint16_t led_count = (value - min_value) * NUM_LEDS / (max_value - min_value);
+//	HAL_ADC_Start(&hadc1);
+//	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+//	uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
 
+//	int val = mapInt(adc_value, RANGE_IN_MIN, RANGE_IN_MAX, RANGE_OUT_MIN, RANGE_OUT_MAX); // 2730/4096 -> 6/10
 
-	int val = mapInt(2730, RANGE_IN_MIN, RANGE_IN_MAX, RANGE_OUT_MIN, RANGE_OUT_MAX); // 2730/4096 -> 6/10
+//	updateMaskFromInt(val);
 
-	updateMaskFromInt(val);
+//	updateLeds();
 
-	updateLeds();
-
-	HAL_Delay(200);
+//	HAL_Delay(200);
 
 }
 
@@ -79,7 +89,7 @@ static void updateLeds(void)
 }
 
 // Updates the global led pin mask so that bottom N LEDs are lit for value N
-// value must be between 0  10
+// value must be between 0  NUM_LEDS
 static void updateMaskFromInt(uint16_t value) {
 	// Convert value into a mask
 	if (value > NUM_LEDS) value = NUM_LEDS;
