@@ -11,28 +11,32 @@
 #include "stm32f4xx_hal.h"
 
 // ==== Pin Definitions ====
-#define TM_CLK_GPIO_Port GPIOC
-#define TM_CLK_Pin       GPIO_PIN_1
-
-#define TM_DIO_GPIO_Port GPIOC
-#define TM_DIO_Pin       GPIO_PIN_0
+// see main.h for cubeMx generated preprocessor defines
 
 // ==== Direction Control Macros ====
-// Hack for no external pullups, set internal pullup during input mode (for ACKs)
+// Set open drain - requires external pullups
 #define TM_DIO_INPUT()  do { GPIO_InitTypeDef GPIO_InitStruct = {0}; \
-                             GPIO_InitStruct.Pin = TM_DIO_Pin; \
+                             GPIO_InitStruct.Pin = TM_SDA_Pin; \
                              GPIO_InitStruct.Mode = GPIO_MODE_INPUT; \
-                             GPIO_InitStruct.Pull = GPIO_PULLUP; \
-                             HAL_GPIO_Init(TM_DIO_GPIO_Port, &GPIO_InitStruct); } while(0)
+                             GPIO_InitStruct.Pull = GPIO_NOPULL; \
+                             HAL_GPIO_Init(TM_SDA_GPIO_Port, &GPIO_InitStruct); } while(0)
 
 
 #define TM_DIO_OUTPUT() do { GPIO_InitTypeDef GPIO_InitStruct = {0}; \
-                             GPIO_InitStruct.Pin = TM_DIO_Pin; \
-                             GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; \
+                             GPIO_InitStruct.Pin = TM_SDA_Pin; \
+                             GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; \
+                             GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW; \
                              GPIO_InitStruct.Pull = GPIO_NOPULL; \
-                             HAL_GPIO_Init(TM_DIO_GPIO_Port, &GPIO_InitStruct); } while(0)
+                             HAL_GPIO_Init(TM_SDA_GPIO_Port, &GPIO_InitStruct); } while(0)
 
+
+void tm1637_delay(void);
 void tm1637_init(void);
-void tm1637_display_decimal(int num, uint8_t show_colon);
+void tm1637_start(void);
+void tm1637_stop(void);
+void tm1637_write_byte(uint8_t b);
+void tm1637_set_all(void);
+void tm1637_unset_all(void);
+
 
 #endif

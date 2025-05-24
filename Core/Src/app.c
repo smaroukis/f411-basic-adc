@@ -7,6 +7,7 @@
 #include "app.h"    // Public interface
 #include "util.h"
 #include "main.h"  // or alternatively stm32f4xx_hal.h
+#include "tm1637.h"
 
 #define ADC_MAX_VALUE_12B 4095
 
@@ -52,13 +53,21 @@ void app_init(void)
 {
     // Initialization code, e.g., set up GPIOs or variables
 	tm1637_init();
+	tm1637_start();
+	tm1637_write_byte(0x80); //Display Control +  all zero brightness from manual 1000 0000
+	tm1637_stop();
 }
 
 // Read ADC and update Bargraph to represent value from 1-10
 void app_loop(void)
 {
 	tm1637_set_all();
-	HAL_Delay(100);
+
+	HAL_Delay(1000);
+
+	tm1637_unset_all();
+
+	HAL_Delay(1000);
 
 //	HAL_ADC_Start(&hadc1);
 //	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);

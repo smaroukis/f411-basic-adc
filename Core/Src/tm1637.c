@@ -7,6 +7,14 @@
 
 
 #include "tm1637.h"
+#include "main.h" // for pin definitions
+
+// Forward Declarations
+void CLK_HIGH(void);
+void CLK_LOW(void);
+void DATA_SET(uint8_t b);
+void DATA_HIGH(void);
+void DATA_LOW(void);
 
 // TODO/later setup a hardware timer to pass to delay_us instead of using HAL_Delay
 //static void delay_us(uint32_t us)
@@ -16,72 +24,101 @@
 //}
 
 // Delay will actually be half a bit width
-static void tm1637_delay(void)
+void tm1637_delay(void)
 {
-    HAL_Delay(5);  // You can refine this with `delay_us(5);` later
+    HAL_Delay(1);  // You can refine this with `delay_us(5);` later
+    // 5us is 1/2 clock period, 10us is 100kHz
 }
 
 void tm1637_init(void)
 {
     TM_DIO_OUTPUT();
     // Idle HIGH, no pullups needed, handled by switching GPIO state
-    HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(TM_DIO_GPIO_Port, TM_DIO_Pin, GPIO_PIN_SET);
+    CLK_HIGH();
+    DATA_HIGH();
 }
 
 
 // 2 - Start/Stop Conditions
 
 // Start condition: with CLK = HIGH, DIO HIGH->LOW signals START
-static void tm1637_start(void)
+void tm1637_start(void)
 {
     TM_DIO_OUTPUT();
-    HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(TM_DIO_GPIO_Port, TM_DIO_Pin, GPIO_PIN_SET);
+    CLK_HIGH();
+    DATA_HIGH();
     tm1637_delay();
-    HAL_GPIO_WritePin(TM_DIO_GPIO_Port, TM_DIO_Pin, GPIO_PIN_RESET);
+    DATA_LOW();
     tm1637_delay();
 }
 
 // Stop condition: With CLK = HIGH, DIO LOW->HIGH (After ACK/NACK_)
-static void tm1637_stop(void)
+void tm1637_stop(void)
 {
     TM_DIO_OUTPUT();
-    HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(TM_DIO_GPIO_Port, TM_DIO_Pin, GPIO_PIN_RESET);
+    CLK_LOW();
+    DATA_LOW();
     tm1637_delay();
-    HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_SET);
+    CLK_HIGH();
     tm1637_delay();
-    HAL_GPIO_WritePin(TM_DIO_GPIO_Port, TM_DIO_Pin, GPIO_PIN_SET);
+    DATA_HIGH();
     tm1637_delay();
 }
 
 
 // 3 - Send Byte with ACK Handling
-static void tm1637_write_byte(uint8_t b)
+// TODO change to static once done debugging
+// Note we write LSb first so 0b1111 0000 looks like 0000_1111 in time
+void tm1637_write_byte(uint8_t b)
 {
-    TM_DIO_OUTPUT();
+    TM_DIO_OUTPUT(); // glitch here when change to outpu
 
     for (int i = 0; i < 8; i++) {
-        HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(TM_DIO_GPIO_Port, TM_DIO_Pin, (b & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        CLK_LOW();
+        DATA_SET(b & 0x01);
         tm1637_delay();
-        HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_SET);
+        CLK_HIGH();
         tm1637_delay();
         b >>= 1;
     }
 
     // Wait for ACK
     // Assume: Master handles clock while releasing DIO line for Secondary to respond
-    HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_RESET);
+    CLK_LOW();
+    //DATA_HIGH(); // release bus, see if we get an ACK
     TM_DIO_INPUT();
     // Datasheet says delay 5us after falling edge of clock (vs 2us typ.)
-    tm1637_delay(); tm1637_delay();
-    HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_SET);
     tm1637_delay();
-    TM_DIO_OUTPUT();
+    // heres where we would read the ACK
+    CLK_HIGH(); //  data valid during HIGH, so we can read
+    tm1637_delay();
+    // did see a 14us glitch on Data line here
+    // ERROR: Data should not change L->H here!! (Stop condition)
+    //TM_DIO_OUTPUT();
+
+    tm1637_delay();
 }
 
+// Wrapper for CLK = 1
+void CLK_HIGH(void) {
+	HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_SET);
+}
+
+void CLK_LOW(void) {
+	HAL_GPIO_WritePin(TM_CLK_GPIO_Port, TM_CLK_Pin, GPIO_PIN_RESET);
+}
+
+void DATA_SET(uint8_t b) {
+	HAL_GPIO_WritePin(TM_SDA_GPIO_Port, TM_SDA_Pin, b ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void DATA_HIGH(void) {
+	HAL_GPIO_WritePin(TM_SDA_GPIO_Port, TM_SDA_Pin, GPIO_PIN_SET);
+}
+
+void DATA_LOW(void) {
+	HAL_GPIO_WritePin(TM_SDA_GPIO_Port, TM_SDA_Pin, GPIO_PIN_RESET);
+}
 
 // ================== Public Functions ===============================
 
@@ -91,23 +128,47 @@ static void tm1637_write_byte(uint8_t b)
 // Segments are Columns (Left=SEG1->Right=SEG8), Grids/Digits are rows (top=GRID1->bottom=GRID6)
 void tm1637_set_all(void){
 
-// First Frame is Data Command Set b[7:6]=01, b[5:0]=xxx000 (write) or b[5:0]=xxx100 (write w/ auto increment address)
-tm1637_start();
-tm1637_write_byte(0x40); // Data Command Set, Write, Auto Increment 0b0100 0000
-tm1637_write_byte(0xc0); // Write Address From 0x0; 0b1100 0000
-// Data - Depends on Common Cathode or Common Anode
-for (int i = 0; i < 6; i++) {
-	tm1637_write_byte(0xff);
+	// Data Command
+	tm1637_start();
+	tm1637_write_byte(0x40);
+	tm1637_stop();
+
+	// Address Command
+	tm1637_start();
+	tm1637_write_byte(0xc0); // Write Address From 0x0; 0b1100 0000
+	for (int i = 0; i < 4; i++) {
+		tm1637_write_byte(0xff);
+	}
+	tm1637_stop();
+
+
+	tm1637_delay();
+	tm1637_delay();
+
+	// Flush/Display Control
+	tm1637_start();
+	tm1637_write_byte(0x8f); //Display Control +  max brightness from manual 1000 1111
+	tm1637_stop();
+
 }
-tm1637_stop();
 
+void tm1637_unset_all(void) {
+	// Data Command
+	tm1637_start();
+	tm1637_write_byte(0x40);
+	tm1637_stop();
 
-tm1637_delay();
-tm1637_delay();
+	// Address Command
+	tm1637_start();
+	tm1637_write_byte(0xc0); // Write Address From 0x0; 0b1100 0000
+	for (int i = 0; i < 4; i++) {
+		tm1637_write_byte(0x00);
+	}
+	tm1637_stop();
 
-// Flush/Display Control
-tm1637_start();
-tm1637_write_byte(0x8f); //Display Control +  max brightness from manual 1000 1111
-tm1637_stop();
-
+	tm1637_delay();
+	tm1637_delay();
 }
+
+
+
