@@ -9,6 +9,17 @@
 #include "tm1637.h"
 #include "main.h" // for pin definitions
 
+#define CMD_DATA_AUTO_INC 	0x40u 			// 01xx 00xx
+#define CMD_DATA_NO_AUTO 	0x44u 			// 01xx 01xx
+#define CMD_ADDR         	0xC0u     		/* 11xx aaaa */
+#define TM1637_ADDR(a)      (CMD_ADDR | ((a) & 0x3Fu))
+
+#define   CMD_DISPLAY      	0x80u     		/* 10xx pbbb */
+#define   DISP_ON         	(1u << 3) 		/* p = 1 → ON */
+#define   DISP_OFF        	(0u << 3)
+#define   BRIGHT(n)       	((n) & 0x07u)
+
+
 // Forward Declarations
 void CLK_HIGH(void);
 void CLK_LOW(void);
@@ -71,7 +82,7 @@ void tm1637_stop(void)
 // Note we write LSb first so 0b1111 0000 looks like 0000_1111 in time
 void tm1637_write_byte(uint8_t b)
 {
-    TM_DIO_OUTPUT(); // glitch here when change to outpu
+    TM_DIO_OUTPUT();
 
     for (int i = 0; i < 8; i++) {
         CLK_LOW();
@@ -92,9 +103,6 @@ void tm1637_write_byte(uint8_t b)
     // heres where we would read the ACK
     CLK_HIGH(); //  data valid during HIGH, so we can read
     tm1637_delay();
-    // did see a 14us glitch on Data line here
-    // ERROR: Data should not change L->H here!! (Stop condition)
-    //TM_DIO_OUTPUT();
 
     tm1637_delay();
 }
@@ -130,12 +138,12 @@ void tm1637_set_all(void){
 
 	// Data Command
 	tm1637_start();
-	tm1637_write_byte(0x40);
+	tm1637_write_byte(CMD_DATA_AUTO_INC);
 	tm1637_stop();
 
 	// Address Command
 	tm1637_start();
-	tm1637_write_byte(0xc0); // Write Address From 0x0; 0b1100 0000
+	tm1637_write_byte(TM1637_ADDR(0)); // Write Address From 0x0; 0b1100 0000
 	for (int i = 0; i < 4; i++) {
 		tm1637_write_byte(0xff);
 	}
@@ -147,7 +155,7 @@ void tm1637_set_all(void){
 
 	// Flush/Display Control
 	tm1637_start();
-	tm1637_write_byte(0x8f); //Display Control +  max brightness from manual 1000 1111
+	tm1637_write_byte(CMD_DISPLAY | DISP_ON | BRIGHT(7) ); //Display Control +  max brightness from manual 1000 1111
 	tm1637_stop();
 
 }
@@ -155,12 +163,12 @@ void tm1637_set_all(void){
 void tm1637_unset_all(void) {
 	// Data Command
 	tm1637_start();
-	tm1637_write_byte(0x40);
+	tm1637_write_byte(CMD_DATA_AUTO_INC);
 	tm1637_stop();
 
 	// Address Command
 	tm1637_start();
-	tm1637_write_byte(0xc0); // Write Address From 0x0; 0b1100 0000
+	tm1637_write_byte(TM1637_ADDR(0x0)); // Write Address From 0x0; 0b1100 0000
 	for (int i = 0; i < 4; i++) {
 		tm1637_write_byte(0x00);
 	}
@@ -169,6 +177,4 @@ void tm1637_unset_all(void) {
 	tm1637_delay();
 	tm1637_delay();
 }
-
-
 

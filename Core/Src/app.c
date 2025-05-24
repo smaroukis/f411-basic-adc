@@ -47,6 +47,7 @@ static uint16_t led_mask = 0x0000;
 // =======================  Private function prototypes =======================================
 static void updateLeds(void);
 static void updateMaskFromInt(uint16_t value);
+static void loopAllSegments(void);
 
 // =======================  Public Function Implementations =======================================
 void app_init(void)
@@ -103,6 +104,11 @@ static void updateMaskFromInt(uint16_t value) {
 	// Convert value into a mask
 	if (value > NUM_LEDS) value = NUM_LEDS;
 	led_mask = (1 << value) - 1; // subtracting 1 sets all the lower bits
+}
+
+
+static void loopAllSegments(void) {
+
 }
 
 
