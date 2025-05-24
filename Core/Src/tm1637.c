@@ -8,6 +8,7 @@
 
 #include "tm1637.h"
 #include "main.h" // for pin definitions
+#include "stm32_nop_delay.h"
 
 #define CMD_DATA_AUTO_INC 	0x40u 			// 01xx 00xx
 #define CMD_DATA_NO_AUTO 	0x44u 			// 01xx 01xx
@@ -34,11 +35,18 @@ void DATA_LOW(void);
 //    while ((__HAL_TIM_GET_COUNTER(&htimX) - start) < us);
 //}
 
-// Delay will actually be half a bit width
+/* Aim for ≈10 µs full bit => 5 µs half-bit */
+/* Results: Measured at ~30us full bit */
+static inline void tm_delay_halfbit(void)
+{
+    /* 5 µs * 84 MHz = 420 cycles ; 420 / 3 ≈ 140 loop-iters */
+	// Above needs to be checked with clock tree //
+    delay_cycles(140);
+}
+
 void tm1637_delay(void)
 {
-    HAL_Delay(1);  // You can refine this with `delay_us(5);` later
-    // 5us is 1/2 clock period, 10us is 100kHz
+    tm_delay_halfbit();
 }
 
 void tm1637_init(void)
