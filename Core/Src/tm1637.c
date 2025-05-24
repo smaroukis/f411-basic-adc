@@ -58,8 +58,6 @@ void tm1637_init(void)
 }
 
 
-// 2 - Start/Stop Conditions
-
 // Start condition: with CLK = HIGH, DIO HIGH->LOW signals START
 void tm1637_start(void)
 {
@@ -177,12 +175,80 @@ void tm1637_unset_all(void) {
 	// Address Command
 	tm1637_start();
 	tm1637_write_byte(TM1637_ADDR(0x0)); // Write Address From 0x0; 0b1100 0000
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 6; i++) {
 		tm1637_write_byte(0x00);
 	}
 	tm1637_stop();
 
 	tm1637_delay();
 	tm1637_delay();
+}
+
+
+void tm1637_loopAllSegments(void) {
+	// Assert Brightness
+	tm1637_start();
+	tm1637_write_byte(CMD_DISPLAY | DISP_ON | BRIGHT(7) );
+	tm1637_stop();
+
+	// Light up each segment one by one to check where e.g. address of dots
+	tm1637_start();
+	tm1637_write_byte(CMD_DATA_NO_AUTO);
+	tm1637_stop();
+
+	for (uint8_t a = 0; a < 4; a++) {
+
+		for (uint8_t i = 0; i < 8; i++) {
+
+			tm1637_start();
+			tm1637_write_byte(TM1637_ADDR(a));
+
+			tm1637_write_byte(1U << i);
+
+			tm1637_stop();
+
+			HAL_Delay(100);
+
+			if (i == 7) {
+				tm1637_start();
+				tm1637_write_byte(TM1637_ADDR(a));
+				tm1637_write_byte(0x00);
+				tm1637_stop();
+			}
+		}
+
+	}
+
+}
+
+void tm1637_loopDigNSegs(uint8_t n) {
+	// Assert Brightness
+	tm1637_start();
+	tm1637_write_byte(CMD_DISPLAY | DISP_ON | BRIGHT(7) );
+	tm1637_stop();
+
+	// Light up each segment one by one to check where e.g. address of dots
+	tm1637_start();
+	tm1637_write_byte(CMD_DATA_NO_AUTO);
+	tm1637_stop();
+
+	for (uint8_t i = 0; i < 8; i++) {
+
+		tm1637_start();
+		tm1637_write_byte(TM1637_ADDR(n));
+
+		tm1637_write_byte(1U << i);
+
+		tm1637_stop();
+		HAL_Delay(200);
+
+		if (i == 7) {
+			tm1637_start();
+			tm1637_write_byte(TM1637_ADDR(n));
+			tm1637_write_byte(0x00);
+			tm1637_stop();
+		}
+	}
+
 }
 

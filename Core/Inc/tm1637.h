@@ -5,6 +5,9 @@
  *      Author: s
  */
 
+// Digit 0 is right most
+// Colon is part of Digit 1 ("g")
+
 #ifndef TM1637_H
 #define TM1637_H
 
@@ -37,6 +40,7 @@ void tm1637_stop(void);
 void tm1637_write_byte(uint8_t b);
 void tm1637_set_all(void);
 void tm1637_unset_all(void);
+void tm1637_loopDigNSegs(uint8_t n);
 
 
 #endif
