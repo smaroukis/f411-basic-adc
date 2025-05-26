@@ -20,7 +20,7 @@
 
 
 // ==================  External Variables Only Used Here =========================================
-extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc1; // adc1 channel 8 is PB0
 
 
 // ==================  Private Variables (File Scope)  =================================
@@ -70,25 +70,19 @@ void app_init(void)
 void app_loop(void)
 {
 
-	//tm1637_loopAllSegs();
-	tm1637_displayNumber(10000, 0);
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
 
-
-//	encoded_buf_from_int_buf(nums, dots, buff, sizeof(buff) / sizeof(buff[0]) ); // builds encoded buffer of bytes
-//	tm1637_fill_with_blanks(buff, sizeof(buff) / sizeof(buff[0]), 1);
-
-
-//	HAL_ADC_Start(&hadc1);
-//	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-//	uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
-
-//	int val = mapInt(adc_value, RANGE_IN_MIN, RANGE_IN_MAX, RANGE_OUT_MIN, RANGE_OUT_MAX); // 2730/4096 -> 6/10
+	// Display raw ADC value
+	tm1637_displayNumber(adc_value, 0);
+	int val = mapInt(adc_value, RANGE_IN_MIN, RANGE_IN_MAX, RANGE_OUT_MIN, RANGE_OUT_MAX); // 2730/4096 -> 6/10
 
 //	updateMaskFromInt(val);
 
 //	updateLeds();
 
-//	HAL_Delay(200);
+	HAL_Delay(200);
 
 }
 
