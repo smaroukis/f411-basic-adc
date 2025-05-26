@@ -69,6 +69,8 @@ const uint8_t digit_to_segment[10] = {
 
 static const uint8_t TM1637_DP_BIT = 0b10000000;
 
+static const uint8_t DISPLAY_ERR[4] = { 0x0, 0b01111001, 0b01010000 , 0b01010000 };
+
 /* Aim for ≈10 µs full bit => 5 µs half-bit */
 /* Results: Measured at ~30us full bit */
 static inline void tm_delay_halfbit(void)
@@ -179,7 +181,8 @@ void tm1637_write_packet(uint8_t *buff, size_t len, uint8_t start_addr) {
 	uint8_t *data = buff;
 
 	if (start_addr >= TM1637_DIGIT_COUNT) {
-		assert(0); // don't compile
+		// TODO handle better
+		assert(0);
 	}
 
 	if (len == 0) {
@@ -225,11 +228,61 @@ void tm1637_write_packet(uint8_t *buff, size_t len, uint8_t start_addr) {
 void tm1637_fill_with_blanks(const uint8_t *data, uint8_t len, uint8_t start_pos) {
 	uint8_t full[TM1637_DIGIT_COUNT] = { 0 };
 
-	for (uint8_t i = 0; i < len && start_pos + i < len; i++) {
+	for (uint8_t i = 0; i < len; i++) {
+		if (start_pos + i >= TM1637_DIGIT_COUNT) {
+			assert(0); // TODO-handle this
+		}
 		// populate the rest with the data
 		full[start_pos + i] = data[i];
 	}
 	tm1637_write_packet(full, sizeof(full) / sizeof(full[0]), 0); // start at 0 to fill with blanks as necessary
+}
+
+
+// Display a number between 0-9999 starting at 0-indexed digit position
+// See header for digit indices descriptions
+void tm1637_displayNumber(uint16_t number, uint8_t pos) {
+	// Out of bounds flashes the screen
+	if (number > 9999 || number < 0) {
+		tm1637_displayError();
+		HAL_Delay(200);
+		tm1637_unset_all();
+		HAL_Delay(200);
+		tm1637_displayError();
+		HAL_Delay(200);
+		tm1637_unset_all();
+		return;
+	}
+
+
+	uint8_t i = 0;
+	uint8_t encodedDigits[TM1637_DIGIT_COUNT] = {0};
+
+	if (number == 0) {
+		// Handle singular case
+		// Override position
+		tm1637_fill_with_blanks((uint8_t[]){ 0 }, 1, 0);
+		return;
+	}
+
+	// Create encoded buffer and fill with blanks to write
+	// NOTE we need to reverse the array since we are using modulo for LSD
+	do {
+		encodedDigits[i++] = digit_to_segment[number % 10];
+		number /= 10;
+	} while (number > 0 && i < TM1637_DIGIT_COUNT);
+
+	// Reverse the array
+	if (i > 1) {
+		for (uint8_t head = 0; head < i/2; head++) {
+			uint8_t tail = i - 1 - head;
+			uint8_t tmp = encodedDigits[tail];
+			encodedDigits[tail] = encodedDigits[head];
+			encodedDigits[head] = tmp;
+		}
+	}
+
+	tm1637_fill_with_blanks(encodedDigits, i, pos);
 }
 
 // 4 digit set all function
@@ -246,7 +299,7 @@ void tm1637_set_all(void){
 	// Address Command
 	tm1637_start();
 	tm1637_write_byte(TM1637_ADDR(0)); // Write Address From 0x0; 0b1100 0000
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < TM1637_DIGIT_COUNT; i++) {
 		tm1637_write_byte(0xff);
 	}
 	tm1637_stop();
@@ -271,7 +324,7 @@ void tm1637_unset_all(void) {
 	// Address Command
 	tm1637_start();
 	tm1637_write_byte(TM1637_ADDR(0x0)); // Write Address From 0x0; 0b1100 0000
-	for (int i = 0; i < 6; i++) {
+	for (int i = 0; i < TM1637_DIGIT_COUNT; i++) {
 		tm1637_write_byte(0x00);
 	}
 	tm1637_stop();
@@ -280,6 +333,9 @@ void tm1637_unset_all(void) {
 	tm1637_delay();
 }
 
+void tm1637_displayError(void) {
+	tm1637_write_packet(DISPLAY_ERR, TM1637_DIGIT_COUNT, 0);
+}
 
 // =============== Decoder Helpers ==========================
 
@@ -311,12 +367,6 @@ void encoded_buf_from_int_buf(const uint8_t *digits, const uint8_t *use_dp, uint
 	}
 
 }
-
-void displayNumber(uint16_t number, uint8_t lsd_start_pos) {
-	// TODO - display integer between 0-9999 with no DP
-}
-
-
 
 
 
@@ -388,3 +438,14 @@ void tm1637_loopDigNSegs(uint8_t n) {
 
 }
 
+
+void tm1637_loop9999(void) {
+
+	uint16_t i = 0;
+	do {
+	 tm1637_displayNumber(i, 0);
+	 HAL_Delay(25);
+	 i++;
+	} while(i < 10000u);
+
+}

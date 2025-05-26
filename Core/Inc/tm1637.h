@@ -49,5 +49,7 @@ void tm1637_loopAllSegs(void);
 void encoded_buf_from_int_buf(const uint8_t *digits, const uint8_t *use_dp, uint8_t *buf, uint8_t len);
 void tm1637_write_packet(uint8_t *buff, size_t len, uint8_t start_addr);
 void tm1637_fill_with_blanks(const uint8_t *data, uint8_t len, uint8_t start_pos);
+void tm1637_displayNumber(uint16_t number, uint8_t pos);
+void tm1637_displayError(void);
 
 #endif

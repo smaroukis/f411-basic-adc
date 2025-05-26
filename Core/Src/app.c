@@ -57,20 +57,25 @@ void app_init(void)
 	tm1637_unset_all();
 }
 
-// Read ADC and update Bargraph to represent value from 1-10
+// =============== app_loop() Usage Examples ======================
+// Test segments:  	tm1637_loopAllSegs() <-- to see which segment is digit 0
+// Example 2 - Encode and Display with blanks
+//	uint8_t buff[] = {0,0,0};
+//	uint8_t nums[] = {1,2,3};
+//	uint8_t dots[] = {0,0,0};
+//
+//	encoded_buf_from_int_buf(nums, dots, buff, sizeof(buff) / sizeof(buff[0]) ); // builds encoded buffer of bytes
+//	tm1637_fill_with_blanks(buff, sizeof(buff) / sizeof(buff[0]), 0);
+
 void app_loop(void)
 {
 
+	//tm1637_loopAllSegs();
+	tm1637_displayNumber(10000, 0);
 
-	uint8_t buff[] = {0,0,0};
-	uint8_t nums[] = {1,2,3};
-	uint8_t dots[] = {0,0,0};
 
-	encoded_buf_from_int_buf(nums, dots, buff, sizeof(buff) / sizeof(buff[0]) ); // builds encoded buffer of bytes
-
-// TODO debug this	tm1637_write_packet(buff, sizeof(buff) / sizeof(buff[0]), 3);
-	tm1637_fill_with_blanks(buff, sizeof(buff) / sizeof(buff[0]), 0);
-	HAL_Delay(1000);
+//	encoded_buf_from_int_buf(nums, dots, buff, sizeof(buff) / sizeof(buff[0]) ); // builds encoded buffer of bytes
+//	tm1637_fill_with_blanks(buff, sizeof(buff) / sizeof(buff[0]), 1);
 
 
 //	HAL_ADC_Start(&hadc1);
@@ -86,6 +91,8 @@ void app_loop(void)
 //	HAL_Delay(200);
 
 }
+
+
 
 // =======================  Private Function Definitions =======================================
 static void updateLeds(void)
