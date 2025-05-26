@@ -64,11 +64,11 @@ void app_loop(void)
 	uint8_t buff[] = {0xFF, 0xFF, 0xFF, 0xFF};
 
 	memset(buff, 0xFF, sizeof(buff));
-	tm1637_write_packet(buff, 4);
+	tm1637_write_packet(buff, sizeof(buff) / sizeof(buff[0]));
 	HAL_Delay(1000);
 
 	memset(buff, 0, sizeof(buff));
-	tm1637_write_packet(buff, 4);
+	tm1637_write_packet(buff, sizeof(buff) / sizeof(buff[0]));
 	HAL_Delay(1000);
 
 //	HAL_ADC_Start(&hadc1);
