@@ -9,6 +9,7 @@
 #include "tm1637.h"
 #include "main.h" // for pin definitions
 #include "stm32_nop_delay.h"
+#include <assert.h>
 
 #define CMD_DATA_AUTO_INC 	0x40u 			// 01xx 00xx
 #define CMD_DATA_NO_AUTO 	0x44u 			// 01xx 01xx
@@ -34,6 +35,39 @@ void DATA_LOW(void);
 //    uint32_t start = __HAL_TIM_GET_COUNTER(&htimX);  // Use a configured 1MHz timer
 //    while ((__HAL_TIM_GET_COUNTER(&htimX) - start) < us);
 //}
+
+//
+// ┌──────────────────────────┐
+// │  __    __      __    __  │<- CLK
+// │ |  |  |  | -  |  |  |  | │<- DIO
+// │ |__|  |__| -  |__|  |__| │<- GND
+// │  0     1        2     3  │<- VCC
+// └──────────────────────────┘
+//	    Digit index (0 = left)
+//	Colon belongs to Digit 1 MSB
+
+//
+//      A
+//     ---
+//  F |   | B
+//     -G-
+//  E |   | C
+//     ---
+//      D    DP
+const uint8_t digit_to_segment[10] = {
+    0b00111111,  // 0: segments a,b,c,d,e,f 	0x3f
+    0b00000110,  // 1: segments b,c				0x06
+    0b01011011,  // 2: a,b,d,e,g				0x5b
+    0b01001111,  // 3: a,b,c,d,g				0x4f
+    0b01100110,  // 4: b,c,f,g					0x66
+    0b01101101,  // 5: a,c,d,f,g				0x6D
+    0b01111101,  // 6: a,c,d,e,f,g				0x7D
+    0b00000111,  // 7: a,b,c					0x07
+    0b01111111,  // 8: a,b,c,d,e,f,g			0x7F
+    0b01101111   // 9: a,b,c,d,f,g				0x6F
+};
+
+static const uint8_t TM1637_DP_BIT = 0b10000000;
 
 /* Aim for ≈10 µs full bit => 5 µs half-bit */
 /* Results: Measured at ~30us full bit */
@@ -139,8 +173,23 @@ void DATA_LOW(void) {
 // Write a multi byte packet to multiple Digits
 // buff[0] will be written to digit 0
 // e.g. {0xAA, 0xBB, 0xCC, 0xDD} -> means 0xAA will be written to digit[0] etc
-void tm1637_write_packet(uint8_t *buff, size_t len) {
+// N.B.: Dumb and fast, doesn't blank other digits outside of start_addr to len-1
+// TODO debug for non zero start_addr
+void tm1637_write_packet(uint8_t *buff, size_t len, uint8_t start_addr) {
 	uint8_t *data = buff;
+
+	if (start_addr >= TM1637_DIGIT_COUNT) {
+		assert(0); // don't compile
+	}
+
+	if (len == 0) {
+		return;
+	}
+
+	if (start_addr + len > TM1637_DIGIT_COUNT) {
+		// clamp to remaining digits
+		len = TM1637_DIGIT_COUNT - start_addr;
+	}
 
 	tm1637_start();
 	tm1637_write_byte(CMD_DATA_AUTO_INC);
@@ -148,10 +197,10 @@ void tm1637_write_packet(uint8_t *buff, size_t len) {
 
 	// Address Command
 	tm1637_start();
-	tm1637_write_byte(TM1637_ADDR(0)); // Write Address From 0x0; 0b1100 0000
+	tm1637_write_byte(TM1637_ADDR(start_addr)); // Byte addressed, one byte wide. E.g. digit 0 at 0x0, digit 1 at 0x01, etc
 
 	// Address is auto incrementing
-	for (int a = 0; a < len; a++) {
+	for (int i = 0; i < len; i++) {
 		tm1637_write_byte(*data++);
 	}
 
@@ -167,6 +216,21 @@ void tm1637_write_packet(uint8_t *buff, size_t len) {
 	tm1637_stop();
 }
 
+// Given a buffer and its length and a starting index (0-indexed) create the packet of encoded bytes
+// while filling all positions before start_pos with zeros
+// ** Note this WONT reverse the array, so e.g. { 1, 2, 3} start_pos = 1 will look like { 3 2 1 x} on the display
+// Example:
+// Input: data = {1, 2, 3} | start_pos = 1
+// Outputs: full = {x, 1, 2, 3} where x is 0x0 and others are encoded vals
+void tm1637_fill_with_blanks(const uint8_t *data, uint8_t len, uint8_t start_pos) {
+	uint8_t full[TM1637_DIGIT_COUNT] = { 0 };
+
+	for (uint8_t i = 0; i < len && start_pos + i < len; i++) {
+		// populate the rest with the data
+		full[start_pos + i] = data[i];
+	}
+	tm1637_write_packet(full, sizeof(full) / sizeof(full[0]), 0); // start at 0 to fill with blanks as necessary
+}
 
 // 4 digit set all function
 // LSB first
@@ -214,6 +278,42 @@ void tm1637_unset_all(void) {
 
 	tm1637_delay();
 	tm1637_delay();
+}
+
+
+// =============== Decoder Helpers ==========================
+
+// Core encoder: take 0-9 plus "dot" boolean flag
+static inline uint8_t encode_raw(uint8_t digit, uint8_t dot) {
+	if (digit > 9) {
+		return 0;
+	}
+
+	uint8_t seg = digit_to_segment[digit];
+
+	return dot ? seg | TM1637_DP_BIT : seg;
+}
+
+static inline uint8_t encode_digit(uint8_t d) {
+	return encode_raw(d, 0);
+}
+
+static inline uint8_t encode_digit_dp(uint8_t d) {
+	return encode_raw(d, 1);
+}
+
+
+// Build an encoded  buffer from raw integers
+void encoded_buf_from_int_buf(const uint8_t *digits, const uint8_t *use_dp, uint8_t *buf, uint8_t len) {
+
+	for (uint8_t i = 0; i < len; i++) {
+		buf[i] = use_dp[i] ? encode_digit_dp(digits[i]) : encode_digit(digits[i]);
+	}
+
+}
+
+void displayNumber(uint16_t number, uint8_t lsd_start_pos) {
+	// TODO - display integer between 0-9999 with no DP
 }
 
 

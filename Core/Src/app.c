@@ -61,15 +61,17 @@ void app_init(void)
 void app_loop(void)
 {
 
-	uint8_t buff[] = {0xFF, 0xFF, 0xFF, 0xFF};
 
-	memset(buff, 0xFF, sizeof(buff));
-	tm1637_write_packet(buff, sizeof(buff) / sizeof(buff[0]));
+	uint8_t buff[] = {0,0,0};
+	uint8_t nums[] = {1,2,3};
+	uint8_t dots[] = {0,0,0};
+
+	encoded_buf_from_int_buf(nums, dots, buff, sizeof(buff) / sizeof(buff[0]) ); // builds encoded buffer of bytes
+
+// TODO debug this	tm1637_write_packet(buff, sizeof(buff) / sizeof(buff[0]), 3);
+	tm1637_fill_with_blanks(buff, sizeof(buff) / sizeof(buff[0]), 0);
 	HAL_Delay(1000);
 
-	memset(buff, 0, sizeof(buff));
-	tm1637_write_packet(buff, sizeof(buff) / sizeof(buff[0]));
-	HAL_Delay(1000);
 
 //	HAL_ADC_Start(&hadc1);
 //	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
