@@ -8,6 +8,7 @@
 #include "util.h"
 #include "main.h"  // or alternatively stm32f4xx_hal.h
 #include "tm1637.h"
+#include <string.h> // for memset
 
 #define ADC_MAX_VALUE_12B 4095
 
@@ -59,7 +60,16 @@ void app_init(void)
 // Read ADC and update Bargraph to represent value from 1-10
 void app_loop(void)
 {
-	tm1637_loopAllSegments();
+
+	uint8_t buff[] = {0xFF, 0xFF, 0xFF, 0xFF};
+
+	memset(buff, 0xFF, sizeof(buff));
+	tm1637_write_packet(buff, 4);
+	HAL_Delay(1000);
+
+	memset(buff, 0, sizeof(buff));
+	tm1637_write_packet(buff, 4);
+	HAL_Delay(1000);
 
 //	HAL_ADC_Start(&hadc1);
 //	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);

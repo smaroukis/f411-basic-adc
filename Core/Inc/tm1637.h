@@ -41,6 +41,7 @@ void tm1637_write_byte(uint8_t b);
 void tm1637_set_all(void);
 void tm1637_unset_all(void);
 void tm1637_loopDigNSegs(uint8_t n);
+void tm1637_loopAllSegs(void);
 
 
 #endif

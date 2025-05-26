@@ -83,7 +83,7 @@ void tm1637_stop(void)
 }
 
 
-// 3 - Send Byte with ACK Handling
+// 3 - Send One Byte with ACK Handling
 // TODO change to static once done debugging
 // Note we write LSb first so 0b1111 0000 looks like 0000_1111 in time
 void tm1637_write_byte(uint8_t b)
@@ -136,6 +136,38 @@ void DATA_LOW(void) {
 
 // ================== Public Functions ===============================
 
+// Write a multi byte packet to multiple Digits
+// buff[0] will be written to digit 0
+// e.g. {0xAA, 0xBB, 0xCC, 0xDD} -> means 0xAA will be written to digit[0] etc
+void tm1637_write_packet(uint8_t *buff, size_t len) {
+	uint8_t *data = buff;
+
+	tm1637_start();
+	tm1637_write_byte(CMD_DATA_AUTO_INC);
+	tm1637_stop();
+
+	// Address Command
+	tm1637_start();
+	tm1637_write_byte(TM1637_ADDR(0)); // Write Address From 0x0; 0b1100 0000
+
+	// Address is auto incrementing
+	for (int a = 0; a < len; a++) {
+		tm1637_write_byte(*data++);
+	}
+
+	tm1637_stop();
+
+
+	tm1637_delay();
+	tm1637_delay();
+
+	// Flush/Display Control
+	tm1637_start();
+	tm1637_write_byte(CMD_DISPLAY | DISP_ON | BRIGHT(7) ); //Display Control +  max brightness from manual 1000 1111
+	tm1637_stop();
+}
+
+
 // 4 digit set all function
 // LSB first
 // Address is 0x00 to 0x05, 8-bits wide
@@ -185,7 +217,11 @@ void tm1637_unset_all(void) {
 }
 
 
-void tm1637_loopAllSegments(void) {
+
+
+
+// =============== Looping Helpers ==========================
+void tm1637_loopAllSegs(void) {
 	// Assert Brightness
 	tm1637_start();
 	tm1637_write_byte(CMD_DISPLAY | DISP_ON | BRIGHT(7) );
