@@ -239,7 +239,7 @@ void tm1637_fill_with_blanks(const uint8_t *data, uint8_t len, uint8_t start_pos
 }
 
 
-// Display a number between 0-9999 starting at 0-indexed digit position
+// Display an integer between 0-9999 starting at 0-indexed digit position
 // See header for digit indices descriptions
 void tm1637_displayNumber(uint16_t number, uint8_t pos) {
 	// Out of bounds flashes the screen
@@ -283,6 +283,84 @@ void tm1637_displayNumber(uint16_t number, uint8_t pos) {
 	}
 
 	tm1637_fill_with_blanks(encodedDigits, i, pos);
+}
+
+// Displays floating point with decimal
+// HACK -- using colon (digit 1 MSB) as decimal
+// TODO still not working for <1.00 e.g. 0.34
+void tm1637_displayDecimal(float number, uint8_t pos) {
+
+	// Check bounds, since decimal is in the middle, we can only go to 99.99
+	if (number > 99.99 || number < 0) {
+		tm1637_displayError();
+        return;
+	}
+
+	// Seperate Ones, Tens, Hundred, and Tenths, Hundredths
+	uint32_t intPart = (uint32_t)number;
+	float fracPart  = number - (float)intPart;
+
+	// Get number of non-zero integer digits e.g. 99.99 -> 2, 9.99 -> 1, 0.99 -> 0
+    uint8_t numIntDigits = 0;
+    if (intPart == 0) {
+        // still show "0" on the display
+        numIntDigits = 1;
+    }
+    if (intPart > 0) {
+        uint32_t tmp = intPart;
+        numIntDigits = 1;
+            while ( ( (tmp % 10 )  > 0 ) && ( ( tmp / 10 ) > 0) ) {
+                tmp /= 10;
+                numIntDigits++;
+            }
+    }
+
+	// Build non encoded array handling decimal
+    // Note this will take off digits starting from the least significant / rightmost
+    // So we need to reverse afterwards
+	uint8_t i = 0;
+	uint8_t encodedDigits[TM1637_DIGIT_COUNT] = {0};
+    uint32_t scaled = (uint32_t)(number * 100.0f + 0.5f); // two decimal places max for this hardware, bump up before cast for rounding
+	do {
+		encodedDigits[i++] = digit_to_segment[scaled % 10];
+		scaled /= 10;
+
+	} while (scaled > 0 && i < TM1637_DIGIT_COUNT);
+    if (intPart == 0) { // if <1.0f need to put a 0 at the end before reversal
+        encodedDigits[i] = digit_to_segment[0];
+        i++;
+    }
+
+	// Reverse the array, note will left align to [0], leaving blanks on the right
+    // Don't forget to offset when writing the bytes
+	if (i > 1) {
+		for (uint8_t head = 0; head < i/2; head++) {
+			uint8_t tail = i - 1 - head;
+			uint8_t tmp = encodedDigits[tail];
+			encodedDigits[tail] = encodedDigits[head];
+			encodedDigits[head] = tmp;
+		}
+	}
+
+    // Shift by the offset if integer digits < 2
+    uint8_t offset = 0;
+    if (numIntDigits < 2){
+        offset = TM1637_DIGIT_COUNT - i; // i should be number of digits total
+        for (int pos = i - 1; pos >= 0; pos--) {
+            encodedDigits[offset + pos] = encodedDigits[pos]; // e.g. copy nth to nth+offset
+            encodedDigits[pos] = 0; // replace the copy from source
+        }
+    }
+
+	// Put back in the decimal, accounting for offset
+    if (numIntDigits > 0 && numIntDigits <= TM1637_DIGIT_COUNT) {
+        encodedDigits[offset + numIntDigits - 1] |= TM1637_DP_BIT;
+    }
+
+
+	// Send Encoded array for writing
+	tm1637_fill_with_blanks(encodedDigits, TM1637_DIGIT_COUNT, pos);
+
 }
 
 // 4 digit set all function
@@ -335,7 +413,13 @@ void tm1637_unset_all(void) {
 
 void tm1637_displayError(void) {
 	tm1637_write_packet(DISPLAY_ERR, TM1637_DIGIT_COUNT, 0);
+	HAL_Delay(500);
+	tm1637_unset_all();
+	HAL_Delay(500);
+	tm1637_write_packet(DISPLAY_ERR, TM1637_DIGIT_COUNT, 0);
+	tm1637_unset_all();
 }
+
 
 // =============== Decoder Helpers ==========================
 
