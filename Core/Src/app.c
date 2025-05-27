@@ -17,7 +17,7 @@
 #define RANGE_IN_MIN 0
 #define RANGE_IN_MAX ADC_MAX_VALUE_12B
 #define RANGE_OUT_MIN 0
-#define RANGE_OUT_MAX 10
+#define RANGE_OUT_MAX 3.3f
 
 
 // ==================  External Variables Only Used Here =========================================
@@ -70,26 +70,15 @@ void app_init(void)
 
 void app_loop(void)
 {
-	// Testing only
-	tm1637_displayDecimal(0, 0);
-	HAL_Delay(500);
-	tm1637_displayDecimal(0.50, 0);
-	HAL_Delay(500);
-	tm1637_displayDecimal(0.76, 0);
-	HAL_Delay(500);
-	tm1637_displayDecimal(1.97, 0);
-	HAL_Delay(500);
-	tm1637_displayDecimal(23.45, 0);
 
-	// end
 
-//	HAL_ADC_Start(&hadc1);
-//	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-//	uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
 
 	// Display raw ADC value
-//	tm1637_displayNumber(adc_value, 0);
-//	int val = mapInt(adc_value, RANGE_IN_MIN, RANGE_IN_MAX, RANGE_OUT_MIN, RANGE_OUT_MAX); // 2730/4096 -> 6/10
+	float val = mapFloat(adc_value, RANGE_IN_MIN, RANGE_IN_MAX, RANGE_OUT_MIN, RANGE_OUT_MAX); // 2730/4096 -> 6/10
+	tm1637_displayDecimal(val, 0);
 
 //	updateMaskFromInt(val);
 
