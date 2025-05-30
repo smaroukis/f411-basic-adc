@@ -54,6 +54,7 @@ extern UART_HandleTypeDef huart2; // st-link vcp wired to uart2
 
 
 // ==================  Private Variables (File Scope)  =================================
+uint32_t lastHBTick;
 
 typedef struct {
 	GPIO_TypeDef* port;
@@ -80,6 +81,8 @@ static void updateLeds(void);
 static void updateMaskFromInt(uint16_t value);
 float calc_HVBus_voltage(int adc_value);
 void dwt_init(void);
+void heartbeat_init(void);
+void heartbeat(void);
 
 
 // =======================  Public Function Implementations =======================================
@@ -89,8 +92,9 @@ void app_init(void)
 //	tm1637_init();
 //	tm1637_unset_all();
 
-	// Setup UART
+	// Setup UART and Hearbeat
   printf("\r\n=== UART online ===\r\n");
+  heartbeat_init();
 
 // ==================  DEBUG BENCHMARKING ONLY =========================================
 //	dwt_init();
@@ -124,10 +128,8 @@ void app_loop(void)
 		printf("ADC = %u -> %.3f V\r\n", adc_count, busvoltage); // should come through UART
 	}
 
-	HAL_Delay(500);
-	printf("\n...Heartbeat...\r\n\n");
-
-
+	heartbeat();
+	HAL_Delay(1000);
 
 
 //	updateMaskFromInt(val);
@@ -231,5 +233,16 @@ void SWV_Init(uint32_t core_clk_hz, uint32_t swo_baud)
 
 
 
+void heartbeat_init(void) {
+	printf("\n\n..[heartbeat] started..\n\n");
+	lastHBTick = HAL_GetTick();
+}
+
+void heartbeat(void) {
+	if ((HAL_GetTick() - lastHBTick) >= 5000 ) {
+		printf("\n\n..[heartbeat] alive..\n\n");
+		lastHBTick = HAL_GetTick();
+	}
+}
 
 
